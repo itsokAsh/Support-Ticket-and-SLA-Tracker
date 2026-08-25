@@ -43,6 +43,7 @@ const TEST_EMAIL_REPORTER = `integration-reporter-${Date.now()}@test.com`;
 const TEST_EMAIL_AGENT = `integration-agent-${Date.now()}@test.com`;
 const TEST_PASSWORD = "TestPassword123!";
 
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
 /** Execute a GraphQL request against the test Yoga instance. */
 async function gql(
   query: string,

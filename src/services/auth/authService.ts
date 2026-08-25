@@ -3,7 +3,6 @@ import { hashPassword, verifyPassword } from "./password.js";
 import { signToken } from "./jwt.js";
 import type { RegisterInput, LoginInput } from "../../validation/auth.js";
 import {
-  validationError,
   unauthorizedError,
   forbiddenError,
   duplicateEmailError,

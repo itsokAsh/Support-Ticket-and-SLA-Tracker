@@ -27,7 +27,9 @@ const yoga = createYoga<GraphQLContext>({
 
 const port = parseInt(process.env["PORT"] ?? "4000", 10);
 
-const server = createServer(yoga);
+const server = createServer((req, res) => {
+  void yoga(req, res);
+});
 
 server.listen(port, () => {
   // eslint-disable-next-line no-console

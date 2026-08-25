@@ -5,7 +5,7 @@ import { validateInput } from "../../validation/index.js";
 
 export const queryResolvers = {
   Query: {
-    tickets: async (_parent: unknown, args: any, context: GraphQLContext) => {
+    tickets: async (_parent: unknown, args: Record<string, unknown>, context: GraphQLContext) => {
       // Validate pagination and filters
       const input = validateInput(getTicketsSchema, args) as GetTicketsInput;
       return getTickets(context.prisma, context.currentUser, input);

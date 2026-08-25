@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { addBusinessMinutes, businessMinutesBetween } from "../../src/services/sla/businessHours";
 import { deriveSLAClockState, deriveSLAInfo } from "../../src/services/sla/slaState";
-import { getSLAPolicy, AT_RISK_THRESHOLD } from "../../src/services/sla/slaConfig";
+import { getSLAPolicy } from "../../src/services/sla/slaConfig";
 
 /**
  * SLA Engine Unit Tests
