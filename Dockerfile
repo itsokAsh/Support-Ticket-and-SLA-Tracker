@@ -1,4 +1,4 @@
-FROM oven/bun:1-slim
+FROM oven/bun:1
 
 WORKDIR /app
 
@@ -7,7 +7,6 @@ RUN bun install --frozen-lockfile
 
 COPY prisma ./prisma
 COPY src ./src
-COPY tests ./tests
 COPY .eslintrc.cjs tsconfig.json ./
 
 # Generate Prisma client for Debian
