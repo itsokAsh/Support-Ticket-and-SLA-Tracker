@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolvers } from "./graphql/resolvers/index.js";
-import { createContext } from "./context.js";
+import { createContext, type GraphQLContext } from "./context.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const schemaDir = resolve(__dirname, "graphql", "schema");
@@ -15,8 +15,8 @@ const typeDefs = readdirSync(schemaDir)
   .map((f) => readFileSync(join(schemaDir, f), "utf-8"))
   .join("\n");
 
-const yoga = createYoga({
-  schema: createSchema({
+const yoga = createYoga<GraphQLContext>({
+  schema: createSchema<GraphQLContext>({
     typeDefs,
     resolvers,
   }),
