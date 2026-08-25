@@ -9,9 +9,9 @@
  *   - Freeze/unfreeze resolution clock on status changes
  */
 
-import type { PrismaClient, Priority, TicketStatus } from "@prisma/client";
+import type { PrismaClient, TicketStatus } from "@prisma/client";
 import type { CurrentUser } from "../auth/permissions.js";
-import { requireUser, requireAgent, requireOwnerOrAgent } from "../auth/permissions.js";
+import { requireUser, requireAgent } from "../auth/permissions.js";
 import {
   notFoundError,
   forbiddenError,
@@ -22,12 +22,7 @@ import {
   shouldFreezeResolutionClock,
   isReopenTransition,
 } from "./statusTransitions.js";
-import {
-  addBusinessMinutes,
-  getSLAPolicy,
-  AT_RISK_THRESHOLD,
-  BUSINESS_TIMEZONE,
-} from "../sla/index.js";
+import { computeSLADeadlines } from "../sla/index.js";
 import type {
   CreateTicketInput,
   AssignTicketInput,
@@ -51,39 +46,6 @@ async function getHolidaySet(prisma: PrismaClient): Promise<Set<string>> {
   return set;
 }
 
-/**
- * Compute the four SLA deadline timestamps for a new ticket.
- */
-function computeSLADeadlines(
-  priority: Priority,
-  createdAt: Date,
-  holidays: Set<string>
-) {
-  const policy = getSLAPolicy(priority);
-  const timezone = BUSINESS_TIMEZONE;
-  const opts = { timezone, holidays };
-
-  const firstResponseMinutes = policy.firstResponseHours * 60;
-  const resolutionMinutes = policy.resolutionHours * 60;
-
-  const firstResponseDueAt = addBusinessMinutes(createdAt, firstResponseMinutes, opts);
-  const resolutionDueAt = addBusinessMinutes(createdAt, resolutionMinutes, opts);
-
-  // At-risk = 75% of budget consumed → compute the timestamp at that point
-  const firstResponseAtRiskMinutes = Math.floor(firstResponseMinutes * AT_RISK_THRESHOLD);
-  const resolutionAtRiskMinutes = Math.floor(resolutionMinutes * AT_RISK_THRESHOLD);
-
-  const firstResponseAtRiskAt = addBusinessMinutes(createdAt, firstResponseAtRiskMinutes, opts);
-  const resolutionAtRiskAt = addBusinessMinutes(createdAt, resolutionAtRiskMinutes, opts);
-
-  return {
-    firstResponseDueAt,
-    firstResponseAtRiskAt,
-    resolutionDueAt,
-    resolutionAtRiskAt,
-  };
-}
-
 // ── Public API ──
 
 /**
@@ -98,13 +60,13 @@ export async function createTicket(
   const currentUser = requireUser(user);
   const now = new Date();
   const holidays = await getHolidaySet(prisma);
-  const deadlines = computeSLADeadlines(input.priority as Priority, now, holidays);
+  const deadlines = computeSLADeadlines(input.priority, now, holidays);
 
   return prisma.ticket.create({
     data: {
       title: input.title,
       description: input.description,
-      priority: input.priority as Priority,
+      priority: input.priority,
       reporterId: currentUser.userId,
       ...deadlines,
     },
@@ -180,7 +142,7 @@ export async function changeTicketStatus(
   }
 
   const from = ticket.status;
-  const to = input.status as TicketStatus;
+  const to = input.status;
 
   if (!isValidTransition(from, to)) {
     throw invalidTransitionError(from, to);

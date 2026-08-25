@@ -16,6 +16,11 @@ export {
 } from "./businessHours.js";
 
 export {
+  computeSLADeadlines,
+  type SLADeadlines,
+} from "./slaDeadlines.js";
+
+export {
   deriveSLAClockState,
   deriveSLAInfo,
   type SLAState,
