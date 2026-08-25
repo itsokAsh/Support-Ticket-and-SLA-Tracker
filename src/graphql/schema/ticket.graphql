@@ -74,4 +74,10 @@ extend type Mutation {
   resolveTicket(
     ticketId: ID!
   ): Ticket!
+
+  """Add a comment to a ticket. If authored by a non-reporter for the first time, freezes firstResponseAt."""
+  addComment(
+    ticketId: ID!
+    content: String!
+  ): Ticket!
 }

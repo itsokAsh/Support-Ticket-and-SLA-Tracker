@@ -4,6 +4,7 @@ import {
   assignTicket,
   changeTicketStatus,
   resolveTicket,
+  addComment,
 } from "../../services/ticket/index.js";
 import { deriveSLAInfo, BUSINESS_TIMEZONE } from "../../services/sla/index.js";
 import {
@@ -12,6 +13,7 @@ import {
   changeStatusSchema,
   resolveTicketSchema,
 } from "../../validation/ticket.js";
+import { addCommentSchema } from "../../validation/comment.js";
 import { validateInput } from "../../validation/index.js";
 
 // Type for a Ticket row from Prisma (used in field resolvers)
@@ -113,6 +115,15 @@ export const ticketResolvers = {
     ) => {
       const input = validateInput(resolveTicketSchema, args);
       return resolveTicket(context.prisma, context.currentUser, input.ticketId);
+    },
+
+    addComment: async (
+      _parent: unknown,
+      args: { ticketId: string; content: string },
+      context: GraphQLContext
+    ) => {
+      const input = validateInput(addCommentSchema, args);
+      return addComment(context.prisma, context.currentUser, input);
     },
   },
 };

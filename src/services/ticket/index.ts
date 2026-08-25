@@ -5,6 +5,8 @@ export {
   resolveTicket,
 } from "./ticketService.js";
 
+export { addComment } from "./commentService.js";
+
 export {
   isValidTransition,
   shouldFreezeResolutionClock,
