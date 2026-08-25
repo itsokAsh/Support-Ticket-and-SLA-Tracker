@@ -5,91 +5,48 @@ import type { GetTicketsInput } from "../../validation/queries.js";
 import { notFoundError } from "../../errors.js";
 
 /**
- * Build Prisma WHERE clauses for the dynamic SLA state.
- * Because we stored the dueAt and atRiskAt timestamps at creation,
- * we can accurately query real-time SLA states using current time
- * without needing to load all tickets into memory.
+ * Build a Prisma WHERE clause for a given SLA state.
+ *
+ * We classify tickets by their RESOLUTION clock, using the timestamps we stored
+ * at creation. This keeps the query to plain timestamp comparisons (no
+ * column-to-column comparisons, which Prisma can't express) and matches exactly
+ * how the dashboard counts tickets.
+ *
+ * The three cases are mutually exclusive and together cover every ticket:
+ *   - BREACHED: not yet resolved and past the resolution deadline
+ *   - AT_RISK:  not yet resolved, past the 75% mark, but not yet past the deadline
+ *   - ON_TRACK: already resolved, or not yet past the 75% mark
+ *
+ * Documented simplification: a ticket resolved AFTER its deadline counts as
+ * ON_TRACK here, because once it is resolved the clock is frozen and resolvedAt
+ * is set. The per-ticket SLAInfo still reports that ticket as BREACHED.
+ * Distinguishing "resolved late" in a filter would require comparing resolvedAt
+ * to resolutionDueAt column-to-column, which Prisma can't do without raw SQL —
+ * not worth the added complexity for this feature.
  */
-function buildSlaStateFilter(slaState: "ON_TRACK" | "AT_RISK" | "BREACHED", now: Date): Prisma.TicketWhereInput {
-  const getFilter = (
-    eventAtField: "firstResponseAt" | "resolvedAt",
-    dueAtField: "firstResponseDueAt" | "resolutionDueAt",
-    atRiskAtField: "firstResponseAtRiskAt" | "resolutionAtRiskAt"
-  ): Prisma.TicketWhereInput => {
-    switch (slaState) {
-      case "ON_TRACK":
-        return {
-          OR: [
-            // Met the SLA
-            { [eventAtField]: { not: null, lte: { [dueAtField]: true } } as any }, // Note: Prisma comparing two columns requires specialized syntax or we do it simply:
-            // Since Prisma column comparisons are limited in basic finds, we use the fact that if eventAt != null and state is queried, 
-            // actually Prisma doesn't support `{ column: { lte: { column: true } } }` easily without raw SQL.
-            // Wait, we can't easily compare two columns natively in Prisma findMany without Prisma 5+ fieldReferences or raw queries.
-            // Let's use Prisma field references.
-            {
-              [eventAtField]: { not: null },
-              // We'll rely on the fact that if eventAt is not null, it was frozen.
-              // We can just filter out BREACHED frozen tickets to get ON_TRACK frozen.
-            },
-            {
-              [eventAtField]: null,
-              [atRiskAtField]: { gt: now },
-            },
-          ],
-        };
-      case "AT_RISK":
-        return {
-          [eventAtField]: null,
-          [atRiskAtField]: { lte: now },
-          [dueAtField]: { gt: now },
-        };
-      case "BREACHED":
-        return {
-          OR: [
-            {
-              [eventAtField]: null,
-              [dueAtField]: { lte: now },
-            },
-            // For frozen breached, it requires column comparison (eventAt > dueAt), 
-            // but we can skip that for now or do a raw query. To keep it simple, 
-            // we'll primarily catch active breaches.
-          ],
-        };
-    }
-  };
+function buildSlaStateFilter(
+  slaState: "ON_TRACK" | "AT_RISK" | "BREACHED",
+  now: Date
+): Prisma.TicketWhereInput {
+  switch (slaState) {
+    case "BREACHED":
+      return { resolvedAt: null, resolutionDueAt: { lte: now } };
 
-  // If a ticket is AT_RISK or BREACHED in either first response OR resolution, it matches.
-  // We'll use a simplified version for Prisma compatibility.
-  
-  if (slaState === "AT_RISK") {
-    return {
-      OR: [
-        getFilter("firstResponseAt", "firstResponseDueAt", "firstResponseAtRiskAt"),
-        getFilter("resolvedAt", "resolutionDueAt", "resolutionAtRiskAt"),
-      ]
-    };
-  }
+    case "AT_RISK":
+      return {
+        resolvedAt: null,
+        resolutionAtRiskAt: { lt: now },
+        resolutionDueAt: { gt: now },
+      };
 
-  if (slaState === "BREACHED") {
-    return {
-      OR: [
-        getFilter("firstResponseAt", "firstResponseDueAt", "firstResponseAtRiskAt"),
-        getFilter("resolvedAt", "resolutionDueAt", "resolutionAtRiskAt"),
-      ]
-    };
-  }
-
-  // ON_TRACK means NEITHER is AT_RISK or BREACHED
-  return {
-    NOT: [
-      {
+    case "ON_TRACK":
+      return {
         OR: [
-          getFilter("firstResponseAt", "firstResponseDueAt", "firstResponseAtRiskAt"),
-          getFilter("resolvedAt", "resolutionDueAt", "resolutionAtRiskAt"),
-        ]
-      } // Not AT_RISK
-    ]
-  };
+          { resolvedAt: { not: null } },
+          { resolutionAtRiskAt: { gte: now } },
+        ],
+      };
+  }
 }
 
 export async function getTickets(
@@ -183,35 +140,44 @@ export async function getTicketById(
 
 export async function getDashboardStats(prisma: PrismaClient, user: CurrentUser | null) {
   const currentUser = requireUser(user);
-  
-  const baseWhere: Prisma.TicketWhereInput = 
+
+  // Reporters see counts for their own tickets; agents see every ticket.
+  const baseWhere: Prisma.TicketWhereInput =
     currentUser.role === "REPORTER" ? { reporterId: currentUser.userId } : {};
 
   const now = new Date();
-  
-  const [open, inProgress, resolved, closed, breachedActive] = await Promise.all([
-    prisma.ticket.count({ where: { ...baseWhere, status: "OPEN" } }),
-    prisma.ticket.count({ where: { ...baseWhere, status: "IN_PROGRESS" } }),
-    prisma.ticket.count({ where: { ...baseWhere, status: "RESOLVED" } }),
-    prisma.ticket.count({ where: { ...baseWhere, status: "CLOSED" } }),
-    // Simple breach approximation for dashboard: active tickets where a deadline has passed
-    prisma.ticket.count({
-      where: {
-        ...baseWhere,
-        status: { notIn: ["RESOLVED", "CLOSED"] },
-        OR: [
-          { firstResponseAt: null, firstResponseDueAt: { lte: now } },
-          { resolvedAt: null, resolutionDueAt: { lte: now } }
-        ]
-      }
-    })
-  ]);
+
+  // The at-risk and breached counts use the same resolution-clock definition as
+  // buildSlaStateFilter, so the dashboard and the ticket list always agree.
+  const [open, inProgress, resolved, closed, atRiskActive, breachedActive] =
+    await Promise.all([
+      prisma.ticket.count({ where: { ...baseWhere, status: "OPEN" } }),
+      prisma.ticket.count({ where: { ...baseWhere, status: "IN_PROGRESS" } }),
+      prisma.ticket.count({ where: { ...baseWhere, status: "RESOLVED" } }),
+      prisma.ticket.count({ where: { ...baseWhere, status: "CLOSED" } }),
+      prisma.ticket.count({
+        where: {
+          ...baseWhere,
+          resolvedAt: null,
+          resolutionAtRiskAt: { lt: now },
+          resolutionDueAt: { gt: now },
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          ...baseWhere,
+          resolvedAt: null,
+          resolutionDueAt: { lte: now },
+        },
+      }),
+    ]);
 
   return {
     open,
     inProgress,
     resolved,
     closed,
-    breachedActive
+    atRiskActive,
+    breachedActive,
   };
 }

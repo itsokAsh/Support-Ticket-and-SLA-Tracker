@@ -7,6 +7,7 @@ interface DashboardStats {
   inProgress: number;
   resolved: number;
   closed: number;
+  atRiskActive: number;
   breachedActive: number;
 }
 
@@ -21,7 +22,7 @@ export default function DashboardPage() {
         const data = await gqlRequest<{ dashboardStats: DashboardStats }>(`
           query {
             dashboardStats {
-              open inProgress resolved closed breachedActive
+              open inProgress resolved closed atRiskActive breachedActive
             }
           }
         `);
@@ -43,6 +44,7 @@ export default function DashboardPage() {
     { label: "In Progress", value: stats.inProgress, color: "var(--color-in-progress)" },
     { label: "Resolved", value: stats.resolved, color: "var(--color-resolved)" },
     { label: "Closed", value: stats.closed, color: "var(--color-closed)" },
+    { label: "SLA At Risk", value: stats.atRiskActive, color: "var(--color-at-risk)" },
     { label: "SLA Breached", value: stats.breachedActive, color: "var(--color-breached)" },
   ];
 

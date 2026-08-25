@@ -13,6 +13,7 @@ type DashboardStats {
   inProgress: Int!
   resolved: Int!
   closed: Int!
+  atRiskActive: Int!
   breachedActive: Int!
 }
 
