@@ -1,6 +1,7 @@
 import { healthResolvers } from "./health.js";
 import { authResolvers } from "./auth.js";
 import { ticketResolvers } from "./ticket.js";
+import { queryResolvers } from "./queries.js";
 import { mergeResolvers } from "@graphql-tools/merge";
 import type { IResolvers } from "@graphql-tools/utils";
 
@@ -13,4 +14,5 @@ export const resolvers: IResolvers = mergeResolvers([
   healthResolvers,
   authResolvers,
   ticketResolvers,
+  queryResolvers,
 ]);
