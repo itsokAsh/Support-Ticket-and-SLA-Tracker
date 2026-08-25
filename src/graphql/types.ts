@@ -1,13 +1,9 @@
+import type { IResolvers } from "@graphql-tools/utils";
+import type { GraphQLContext } from "../context.js";
+
 /**
- * Lightweight resolver type definition.
- *
- * This is intentionally loose at the scaffold phase — a precise
- * code-generated type (e.g. from graphql-codegen) is overkill for
- * a schema-first project of this size. The real type safety comes
- * from the service layer and Prisma types.
+ * Re-export the proper IResolvers type, bound to our GraphQL context.
+ * This ensures compatibility with createSchema() while providing
+ * type safety for our context in resolvers.
  */
-export interface Resolvers {
-  [typeName: string]: {
-    [fieldName: string]: unknown;
-  } | undefined;
-}
+export type Resolvers = IResolvers<unknown, GraphQLContext>;

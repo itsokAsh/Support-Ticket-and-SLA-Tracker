@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: sla_password
       POSTGRES_DB: sla_tracker
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -15,6 +15,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    profiles: ["full"]
+    build:
+      context: ./
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://sla_user:sla_password@postgres:5432/sla_tracker?schema=public
+
+  web:
+    profiles: ["full"]
+    build:
+      context: ./web
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
 
 volumes:
   pgdata:

@@ -1,24 +1,18 @@
 import { healthResolvers } from "./health.js";
-import type { Resolvers } from "../types.js";
+import { authResolvers } from "./auth.js";
+import { ticketResolvers } from "./ticket.js";
+import { queryResolvers } from "./queries.js";
+import { mergeResolvers } from "@graphql-tools/merge";
+import type { IResolvers } from "@graphql-tools/utils";
 
 /**
  * Merge all resolver maps into a single root resolver.
+ * Uses @graphql-tools/merge for proper deep merging of resolver maps.
  * Each phase will add its own resolvers here.
  */
-function mergeResolvers(...resolverMaps: Resolvers[]): Resolvers {
-  const merged: Resolvers = {};
-
-  for (const map of resolverMaps) {
-    for (const [typeName, fields] of Object.entries(map)) {
-      const key = typeName as keyof Resolvers;
-      merged[key] = {
-        ...(merged[key] as Record<string, unknown> | undefined),
-        ...(fields as Record<string, unknown>),
-      } as Resolvers[typeof key];
-    }
-  }
-
-  return merged;
-}
-
-export const resolvers: Resolvers = mergeResolvers(healthResolvers);
+export const resolvers: IResolvers = mergeResolvers([
+  healthResolvers,
+  authResolvers,
+  ticketResolvers,
+  queryResolvers,
+]);

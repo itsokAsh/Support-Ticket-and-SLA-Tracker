@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  REPORTER
+  AGENT
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(REPORTER)
+  reported     Ticket[]  @relation("Reporter")
+  assigned     Ticket[]  @relation("Assignee")
+  comments     Comment[]
+  createdAt    DateTime  @default(now())
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  priority    Priority
+  status      TicketStatus @default(OPEN)
+
+  reporter   User   @relation("Reporter", fields: [reporterId], references: [id])
+  reporterId String
+
+  assignee   User?   @relation("Assignee", fields: [assigneeId], references: [id])
+  assigneeId String?
+
+  // SLA deadlines — computed and stored at creation
+  firstResponseDueAt    DateTime
+  firstResponseAtRiskAt DateTime
+  resolutionDueAt       DateTime
+  resolutionAtRiskAt    DateTime
+
+  // SLA event timestamps that FREEZE each clock
+  firstResponseAt DateTime? // set once, on first non-reporter comment
+  resolvedAt      DateTime? // set on RESOLVED/CLOSED; cleared on reopen
+
+  comments  Comment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([assigneeId])
+  @@index([resolutionDueAt])
+  @@index([createdAt, id])
+}
+
+model Comment {
+  id       String @id @default(cuid())
+  content  String
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id])
+  ticketId String
+
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId String
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+model Holiday {
+  id   String   @id @default(cuid())
+  date DateTime @unique // calendar date treated as a non-working day
+  name String
+}

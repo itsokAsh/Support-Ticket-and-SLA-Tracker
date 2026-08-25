@@ -1,0 +1,44 @@
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+type TicketConnection {
+  edges: [Ticket!]!
+  pageInfo: PageInfo!
+}
+
+type DashboardStats {
+  open: Int!
+  inProgress: Int!
+  resolved: Int!
+  closed: Int!
+  atRiskActive: Int!
+  breachedActive: Int!
+}
+
+extend type Query {
+  """
+  Fetch tickets with cursor-based pagination and optional filters.
+  Reporters only see their own tickets. Agents see all tickets.
+  """
+  tickets(
+    first: Int
+    after: String
+    status: TicketStatus
+    priority: Priority
+    assigneeId: ID
+    slaState: SLAState
+  ): TicketConnection!
+
+  """
+  Fetch a specific ticket by ID.
+  """
+  ticket(id: ID!): Ticket
+
+  """
+  Get dashboard counts (Open, In Progress, etc.)
+  Reporters see counts for their own tickets, agents see global counts.
+  """
+  dashboardStats: DashboardStats!
+}

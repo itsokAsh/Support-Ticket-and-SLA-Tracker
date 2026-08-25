@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sla_user
+          POSTGRES_PASSWORD: sla_password
+          POSTGRES_DB: sla_tracker
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install API Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Web Dependencies
+        working-directory: ./web
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck API
+        run: bun run typecheck
+
+      - name: Typecheck Web
+        working-directory: ./web
+        run: bun run typecheck
+
+      - name: Lint API
+        run: bun run lint
+
+      - name: Lint Web
+        working-directory: ./web
+        run: bun run lint
+
+      - name: Setup Database
+        env:
+          DATABASE_URL: postgresql://sla_user:sla_password@localhost:5434/sla_tracker?schema=public
+        run: bun run gendb
+
+      - name: Run Tests
+        env:
+          DATABASE_URL: postgresql://sla_user:sla_password@localhost:5434/sla_tracker?schema=public
+          JWT_SECRET: ci-test-jwt-secret-key-12345
+          BUSINESS_TIMEZONE: Asia/Kolkata
+        run: bun test

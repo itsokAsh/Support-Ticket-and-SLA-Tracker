@@ -1,0 +1,39 @@
+enum UserRole {
+  REPORTER
+  AGENT
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  role: UserRole!
+  createdAt: String!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+type Mutation {
+  """Register a new user. Only REPORTER role is allowed via self-registration."""
+  register(
+    name: String!
+    email: String!
+    password: String!
+    role: UserRole!
+  ): AuthPayload!
+
+  """Log in with email and password."""
+  login(email: String!, password: String!): AuthPayload!
+}
+
+extend type Query {
+  """List users, optionally filtered by role."""
+  users(role: UserRole): [User!]!
+
+  """Get the currently authenticated user."""
+  me: User
+}
+
