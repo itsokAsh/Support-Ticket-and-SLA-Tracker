@@ -226,6 +226,7 @@ export function addBusinessMinutes(
     // Consume the rest of today and move to next business day
     remaining -= availableToday;
     cursor = addDays(cursor, 1);
+    cursor = setBusinessTime(cursor, BUSINESS_START_HOUR, 0, timezone);
     cursor = normalizeToBusinessStart(cursor, timezone, holidays);
   }
 
@@ -288,6 +289,7 @@ export function businessMinutesBetween(
 
     // Move to next business day
     cursor = addDays(cursor, 1);
+    cursor = setBusinessTime(cursor, BUSINESS_START_HOUR, 0, timezone);
     cursor = normalizeToBusinessStart(cursor, timezone, holidays);
   }
 
