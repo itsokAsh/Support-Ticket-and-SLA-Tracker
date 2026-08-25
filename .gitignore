@@ -31,3 +31,6 @@ bun.lockb
 
 # Coverage
 coverage/
+
+# Documentation / Reference (Private)
+ASSIGNMENT_EXPLAINED.md
