@@ -1,4 +1,5 @@
 import { healthResolvers } from "./health.js";
+import { authResolvers } from "./auth.js";
 import type { Resolvers } from "../types.js";
 
 /**
@@ -21,4 +22,7 @@ function mergeResolvers(...resolverMaps: Resolvers[]): Resolvers {
   return merged;
 }
 
-export const resolvers: Resolvers = mergeResolvers(healthResolvers);
+export const resolvers: Resolvers = mergeResolvers(
+  healthResolvers,
+  authResolvers
+);
