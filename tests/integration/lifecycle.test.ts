@@ -409,7 +409,7 @@ describe("Integration: Full Ticket Lifecycle", () => {
       `
       query {
         dashboardStats {
-          open inProgress resolved closed breachedActive
+          open inProgress resolved closed breachedActive atRiskActive
         }
       }
     `,
@@ -423,6 +423,8 @@ describe("Integration: Full Ticket Lifecycle", () => {
     expect(typeof stats.inProgress).toBe("number");
     expect(typeof stats.resolved).toBe("number");
     expect(typeof stats.closed).toBe("number");
+    expect(typeof stats.breachedActive).toBe("number");
+    expect(typeof stats.atRiskActive).toBe("number");
   });
 
   test("16. Validation errors are returned properly", async () => {
