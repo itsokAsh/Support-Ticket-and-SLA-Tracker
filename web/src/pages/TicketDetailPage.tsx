@@ -282,18 +282,20 @@ export default function TicketDetailPage() {
                   Assign to Me
                 </button>
               )}
-              <div className="status-actions">
-                {allowedTransitions.map((s) => (
-                  <button
-                    key={s}
-                    className="btn btn-outline btn-full"
-                    onClick={() => handleStatusChange(s)}
-                    disabled={actionLoading}
-                  >
-                    → {s.replace("_", " ")}
-                  </button>
-                ))}
-              </div>
+              {ticket.assignee && (
+                <div className="status-actions">
+                  {allowedTransitions.map((s) => (
+                    <button
+                      key={s}
+                      className="btn btn-outline btn-full"
+                      onClick={() => handleStatusChange(s)}
+                      disabled={actionLoading}
+                    >
+                      → {s.replace("_", " ")}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
